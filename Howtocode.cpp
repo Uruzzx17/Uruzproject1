@@ -363,14 +363,8 @@ int moree() {
         if (more == 0) {
             return 0;
         }
-        if (more == 9) {
-            table = 0; //รีเซ๊ตโต๊ะแล้วกลับไปวนใหม่ในฟังก์ชันcustomer
-            return 1;
-        }
     }
 }
-
-
 
 
 void showBill() {
@@ -382,8 +376,6 @@ void showBill() {
     cout << "TOTAL PRICE : " << TABLE[table].total << " BAHT" << endl;
     cout << "-------------------------------------\n" << endl;
 }
-
-
 
 
 void employ() {
@@ -466,21 +458,22 @@ void employ() {
         }
         else if (TABLE[check].count > 0) {//ถ้าโต๊ะถูกใช้งานหรือนับมาแล้วให้เแสดงข้อมูลในโต๊ะนั้น
             cout << "\nTABLE " << check << endl;
-            cout << "\n>>> DETAILS <<< :\n" << endl;
+            cout << "\n----------------->>> DETAILS <<< --------------------\n" << endl;
             for (int i = 0; i < TABLE[check].count; i++) {
                 cout << i + 1 << ". " << TABLE[check].List[i] << " x" << TABLE[check].Amount[i] << endl;
             }
             cout << "TOTAL: " << TABLE[check].total << " BAHT" << endl;
-            cout << "\n1. View Payslip" << endl;
-            cout << "\n2.CLEAR TABLE" << endl;
+            cout << "\n-----------------------------------------------------" << endl;
+            cout << "1. View Payslip" << endl;
+            cout << "2. CLEAR TABLE" << endl;
             int Option2;
-            cout << ": ";
+            cout << endl << ">> ";
             cin >> Option2;
 
             if (Option2 == 2) {//ถ้าเลือก1 ให้ล้างข้อมูลของโต๊ะนั้น ทำให้กลายเป้น0
                 cout << "\nCLEAR TABLE? (1 = YES / 0 = NO) >> ";
                 int confirmClear;
-                cout << ":";cin >> confirmClear;
+                cout << ":"; cin >> confirmClear;
                 if (confirmClear == 1) {
                     TABLE[check].List.clear();
                     TABLE[check].Price.clear();
@@ -659,8 +652,6 @@ void payslip(int tableID) {
 }
 
 
-
-
 void manageTables() {
     int choice;
     cout << "\n--- TABLE MANAGEMENT ---" << endl;
@@ -682,7 +673,7 @@ void manageTables() {
         else cout << "TABLE NOT EMPTY!" << endl;
     }
     else if (choice != 0) {
-        cout << "PLEASE TYPE NUMBER 1, 2 OR 0!" << endl;
+        cout << "CAN'T DELETE MORE" << endl;
     }
 }
 
@@ -695,14 +686,26 @@ void saveData() {
         j["useTable"][to_string(i)] = useTable[i];
         json tJ; tJ["count"] = TABLE[i].count; tJ["total"] = TABLE[i].total;
         for (int k = 0; k < TABLE[i].count; k++) {
-            tJ["orders"].push_back({ {"item", TABLE[i].List[k]}, {"price", TABLE[i].Price[k]}, {"qty", TABLE[i].Amount[k]} });
+            tJ["orders"].push_back({ {"item", TABLE[i].List[k]}, {"price", TABLE[i].Price[k]}, {"amount", TABLE[i].Amount[k]} });
         }
         j["tables"][to_string(i)] = tJ;
     }
     ofstream file("database.json"); file << j.dump(4);
+
 }
 
-
+void saveDataformanageinjson() {
+    json j2;
+    for (int i = 1; i < (int)TABLE.size(); i++) {
+        j2["useTable"][to_string(i)] = useTable[i];
+        json tJ2; tJ2["count"] = TABLE[i].count; tJ2["total"] = TABLE[i].total;
+        for (int k = 0; k < TABLE[i].count; k++) {
+            tJ2["orders"].push_back({ {"item", TABLE[i].List[k]}, {"price", TABLE[i].Price[k]}, {"amount", TABLE[i].Amount[k]} });
+        }
+        j2["tables"][to_string(i)] = tJ2;
+    }
+    ofstream file("alldatabaseinfo.json"); file << j2.dump(4);
+}
 
 
 void loadData() {
@@ -712,43 +715,46 @@ void loadData() {
     int savedTableCount = j["tables"].size();
     TABLE.resize(savedTableCount + 1); useTable.resize(savedTableCount + 1);
     for (int i = 1; i < TABLE.size(); i++) {
-        string s = to_string(i); useTable[i] = j["useTable"].value(s, 0);
+        string s = to_string(i);
+        useTable[i] = j["useTable"].value(s, 0);
         if (j["tables"].contains(s)) {
             TABLE[i].count = j["tables"][s].value("count", 0);
             TABLE[i].total = j["tables"][s].value("total", 0);
             for (auto& o : j["tables"][s]["orders"]) {
                 TABLE[i].List.push_back(o.value("item", ""));
                 TABLE[i].Price.push_back(o.value("price", 0));
-                TABLE[i].Amount.push_back(o.value("qty", 0));
+                TABLE[i].Amount.push_back(o.value("amount", 0));
             }
         }
     }
 }
 
-
-
-
-
 void resetData() {
     int confirm;
-    cout << "\n!!! WARNING: RESET ALL DATA !!!" << endl;
+    cout << "\n!!! WARNING: RESET ALL CURRENT DATA !!!" << endl;
     cout << "1. Confirm / 2. Cancel: ";
     cin >> confirm;
 
     if (confirm == 1) {
+        // 1. เคลียร์ข้อมูลใน RAM
         for (int i = 0; i < TABLE.size(); i++) {
-            TABLE[i].List.clear(); TABLE[i].Price.clear(); TABLE[i].Amount.clear();
-            TABLE[i].count = 0; TABLE[i].total = 0;
+            TABLE[i].List.clear();
+            TABLE[i].Price.clear();
+            TABLE[i].Amount.clear();
+            TABLE[i].count = 0;
+            TABLE[i].total = 0;
         }
         fill(useTable.begin(), useTable.end(), 0);
-        cout << ">>> RESET COMPLETED <<<" << endl;
+
+        // 2. สั่ง Save เฉพาะ database.json (ไฟล์หลัก)
+        saveData();
+
+        cout << ">>> RESET COMPLETED: database.json has been cleared. <<<" << endl;
     }
-    else cout << ">>> PLEASE CAREFULLY RESET DATA <<<" << endl;
+    else {
+        cout << ">>> RESET CANCELLED <<<" << endl;
+    }
 }
-
-
-
-
 
 int main() {
     loadData();
@@ -760,6 +766,7 @@ int main() {
             continue;
         }
         if (Num == 0) {
+            saveDataformanageinjson();
             saveData();
             return 0;
         }
